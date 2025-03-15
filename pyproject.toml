@@ -1,0 +1,84 @@
+[tool.poetry]
+name = "opentofu-state-manager-api"
+version = "0.1.0"
+description = "API Integration"
+authors = [
+    "Oleksandr Yuvchenko <oleksandr.yuvchenko@gmail.com>",
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13.2"
+fastapi = "^0.115.8"
+sqlalchemy = "^2.0.36"
+pydantic = "^2.10.6"
+pydantic-settings = "^2.7.1"
+json-log-formatter = "^1.1"
+dependency-injector = "^4.45.0"
+aiohttp="^3.11.12"
+psycopg2-binary = "^2.9.10"
+gunicorn = "^22.0.0"
+uvicorn = "^0.34.0"
+psycopg = {extras = ["binary"], version = "^3.2.4"}
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
+mypy = "^1.14.0"
+black = "^25.1.0"
+isort = "^6.0.0"
+httpx = "^0.28.1"
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.3"
+pytest-cov = "^6.0.0"
+
+[tool.mypy]
+follow_imports = "normal"
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+implicit_reexport = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.black]
+target-version = ["py312"]
+line-length = 99
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 99
+force_grid_wrap="3"
+length_sort="0"
+multi_line_output="3"
+use_parentheses="1"
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = "src"
+testpaths = "tests"
+python_files = "tests.py test_*.py *_tests.py"
+
+[build-system]
+requires = ["poetry>=2.0.1"]
+build-backend = "poetry.masonry.api"
