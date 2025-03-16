@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from src.controllers import health
+from src.controllers import health, opentofu
 from src.core.logging import setup_logging
 from src.settings import get_settings
 
@@ -49,7 +49,7 @@ def init_fastapi_app() -> FastAPI:
 
     # Include routers
     app.include_router(health.router)
-
+    app.include_router(opentofu.router)
     return app
 
 
