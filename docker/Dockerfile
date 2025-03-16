@@ -4,10 +4,11 @@ ENV POETRY_VIRTUALENVS_IN_PROJECT=false
 ENV PYSETUP_PATH="/app"
 ENV PATH="$PYSETUP_PATH/.local/bin:/usr/bin:$PATH"
 ENV HISTFILE=$PYSETUP_PATH/.local/.ash_history
+ENV PYTHONPATH="/app"
 
 WORKDIR ${PYSETUP_PATH}
 
-RUN pip install --no-cache-dir --ignore-installed poetry==2.0.1
+RUN pip install --no-cache-dir --ignore-installed poetry==2.1.0
 
 COPY poetry.lock pyproject.toml ./
 

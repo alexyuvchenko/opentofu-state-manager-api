@@ -1,5 +1,45 @@
+version: "3.8"
+
 name: opentofu-state-manager
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: opentofu
+      POSTGRES_PASSWORD: opentofu
+      POSTGRES_DB: opentofu_state_manager
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opentofu"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - net
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - net
+
   api:
     container_name: opentofu-state-manager-api
     build:
@@ -10,15 +50,38 @@ services:
     environment:
       DEBUG: false
       PYTHONASYNCIODEBUG: true  # enable the AsyncIO debug mode, print a warning message when a task takes more than 100ms to execute
+      DATABASE_URL: postgresql+asyncpg://opentofu:opentofu@postgres:5432/opentofu_state_manager
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: opentofu-states
+      MINIO_SECURE: "false"
+      APP_NAME: "OpenTofu State Manager API"
+      APP_DESCRIPTION: "API for managing OpenTofu state"
+      APP_VERSION: "0.1.0"
+      ALLOWED_HOSTS: '["*"]'
+      LOG_LEVEL: INFO
+      PYTHONPATH: /app
     ports:
       - "8080:8000"
     volumes:
-      - ..:/app
+      - ../src:/app/src
+      - ../scripts:/app/scripts
+      - ../migrations:/app/migrations
     working_dir: /app
-    command: gunicorn src.main:app --worker-class uvicorn.workers.UvicornWorker --reload --workers 1 -b 0.0.0.0:8000
+    command: ["/bin/sh", "-c", "chmod +x /app/scripts/start.sh && /app/scripts/start.sh"]
     networks:
       - net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
 networks:
   net:
     driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:

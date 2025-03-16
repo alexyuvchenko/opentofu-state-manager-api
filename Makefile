@@ -5,6 +5,8 @@
 	format black isort check check-black check-isort \
 	# Local development
 	setup-local local-server local-test local-check local-format \
+	# Database migrations
+	migrate migrate-up migrate-down migrate-revision \
 	# Help
 	help
 
@@ -83,6 +85,23 @@ clean: ## Clean all useless data
 	rm -rf docs/_build/
 	rm -rf coverage.xml
 	rm -rf dist
+
+# Database migrations
+migrate: ## Run all pending migrations
+	@printf "\n=> Running database migrations...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) alembic upgrade head
+
+migrate-up: ## Run next pending migration
+	@printf "\n=> Running next pending migration...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) alembic upgrade +1
+
+migrate-down: ## Rollback last migration
+	@printf "\n=> Rolling back last migration...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) alembic downgrade -1
+
+migrate-revision: ## Create new migration revision
+	@printf "\n=> Creating new migration revision...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) alembic revision --autogenerate -m "$(message)"
 
 # Local development commands
 setup-local: ## Setup local development environment

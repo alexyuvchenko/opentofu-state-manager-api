@@ -29,9 +29,9 @@ def init_fastapi_app() -> FastAPI:
         title=settings.APP_NAME,
         description=settings.APP_DESCRIPTION,
         version=settings.APP_VERSION,
-        docs_url=f"{API_PREFIX}/docs",
-        redoc_url=f"{API_PREFIX}/redoc",
-        openapi_url=f"{API_PREFIX}/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
         lifespan=lifespan,
     )
 
@@ -48,7 +48,7 @@ def init_fastapi_app() -> FastAPI:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
 
     # Include routers
-    app.include_router(health.router, prefix=API_PREFIX)
+    app.include_router(health.router)
 
     return app
 
