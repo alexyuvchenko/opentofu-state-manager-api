@@ -38,6 +38,69 @@ To stop the application:
 make stop
 ```
 
+## Local Development Setup
+
+### Prerequisites
+- Python 3.13+
+- Poetry (Python package manager)
+- Docker and Docker Compose (for running PostgreSQL)
+
+### Setup Instructions
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd opentofu-state-manager-api
+```
+
+2. Make the setup script executable and run it:
+```bash
+chmod +x scripts/setup_local.sh
+./scripts/setup_local.sh
+```
+
+3. Start the PostgreSQL database using Docker Compose:
+```bash
+docker-compose -f docker/docker-compose.yaml up -d
+```
+
+4. Activate the virtual environment:
+```bash
+source .venv/bin/activate
+```
+
+5. Run the development server:
+```bash
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API will be available at `http://localhost:8000`
+
+### Development Workflow
+
+- The virtual environment is automatically created and activated by the setup script
+- Dependencies are managed using Poetry
+- Environment variables can be configured in the `.env` file
+- The development server supports hot-reload for automatic updates
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Code Quality
+
+The project uses several tools to maintain code quality:
+- Black for code formatting
+- isort for import sorting
+
+You can run these tools using:
+```bash
+black .
+isort .
+```
+
 ## API Documentation
 
 Once the application is running, you can access the API documentation at:

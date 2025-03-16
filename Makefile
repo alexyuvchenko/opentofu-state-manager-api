@@ -1,4 +1,12 @@
-.PHONY: start build rebuild stop run-app docker-run bash clean-docker clean format black isort check check-black check-isort help
+.PHONY: \
+	# Docker commands
+	start build rebuild stop run-app docker-run bash clean-docker \
+	# Code formatting
+	format black isort check check-black check-isort \
+	# Local development
+	setup-local local-server local-test local-check local-format \
+	# Help
+	help
 
 PROJECT_NAME=opentofu-state-manager-api
 PROJECT_CONTAINER_NAME=api
@@ -75,6 +83,32 @@ clean: ## Clean all useless data
 	rm -rf docs/_build/
 	rm -rf coverage.xml
 	rm -rf dist
+
+# Local development commands
+setup-local: ## Setup local development environment
+	@printf "\n=> Setting up local development environment...\n\n"
+	@chmod +x scripts/setup_local.sh
+	@./scripts/setup_local.sh
+
+local-server: ## Run development server locally
+	@printf "\n=> Starting development server...\n\n"
+	@source .venv/bin/activate && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+
+local-test: ## Run tests locally
+	@printf "\n=> Running tests locally...\n\n"
+	@source .venv/bin/activate && pytest
+
+local-check: ## Run code quality checks locally
+	@printf "\n=> Running code quality checks locally...\n\n"
+	@source .venv/bin/activate && black --check src tests
+	@source .venv/bin/activate && isort --check src tests
+	@source .venv/bin/activate && flake8 src tests
+	@source .venv/bin/activate && mypy src
+
+local-format: ## Format code locally
+	@printf "\n=> Formatting code locally...\n\n"
+	@source .venv/bin/activate && black src tests
+	@source .venv/bin/activate && isort src tests
 
 help:
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) \
