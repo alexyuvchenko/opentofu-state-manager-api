@@ -70,7 +70,7 @@ class StateService:
 
         return self._ensure_valid_state_format(state_data)
 
-    async def save_state(self, name: str, state_data: bytes) -> None:
+    async def save_state(self, name: str, state_data: bytes, operation_id: str) -> None:
         await self.storage_repo.ensure_bucket_exists()
 
         try:
@@ -81,11 +81,12 @@ class StateService:
             raise ValueError(f"Invalid JSON in state data: {str(exc)}")
 
         state_hash = self._get_hash(formatted_state)
-        logger.info(f"Saving state for {name}, hash: {state_hash}")
 
-        storage_path = f"states/{name}/{state_hash}"
+        logger.info(f"Saving state for {name}, hash: {state_hash}, operation: {operation_id}")
+        storage_path = f"states/{name}/{state_hash}_{operation_id}"
+
         await self.storage_repo.put(storage_path, formatted_state)
-        await self.state_repo.save_state(name, state_hash, storage_path)
+        await self.state_repo.save_state(name, state_hash, storage_path, operation_id)
 
     async def lock_state(self, name: str, lock_id: str, info: str) -> bool:
         return await self.state_repo.lock(name, lock_id, info)

@@ -78,7 +78,9 @@ class StateRepository:
         await self.session.commit()
         return True
 
-    async def save_state(self, name: str, state_hash: str, storage_path: str) -> StateSchema:
+    async def save_state(
+        self, name: str, state_hash: str, storage_path: str, operation_id: str
+    ) -> StateSchema:
         state = await self.get_by_name(name)
 
         if state:
@@ -89,6 +91,7 @@ class StateRepository:
             state.state_hash = update_data.state_hash
             state.storage_path = update_data.storage_path
             state.updated_at = datetime.now()
+            state.operation_id = operation_id
         else:
             state_data = StateCreateSchema(
                 name=name,
@@ -99,6 +102,7 @@ class StateRepository:
                 name=state_data.name,
                 state_hash=state_data.state_hash,
                 storage_path=state_data.storage_path,
+                operation_id=operation_id,
             )
             self.session.add(state)
 

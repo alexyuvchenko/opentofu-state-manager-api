@@ -30,3 +30,4 @@ class State(Base):
     locked_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     locked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     lock_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    operation_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

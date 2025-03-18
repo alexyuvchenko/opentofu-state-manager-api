@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     Request,
     status,
 )
@@ -26,16 +27,21 @@ async def get_state_service(session: AsyncSession = Depends(get_session)) -> Sta
 @router.get("/state_identifier", status_code=status.HTTP_200_OK)
 async def get_state(request: Request, state_service: StateService = Depends(get_state_service)):
     state_data = await state_service.get_state("state_identifier")
+    # The service now always returns at least an initial state with generated lineage
     return Response(content=state_data, media_type="application/json")
 
 
 @router.post(
-    "/state_identifier/{ID}", status_code=status.HTTP_200_OK, response_model=LockResponseSchema
+    "/state_identifier", status_code=status.HTTP_200_OK, response_model=LockResponseSchema
 )
-async def save_state(request: Request, state_service: StateService = Depends(get_state_service)):
+async def save_state(
+    request: Request,
+    ID: str = Query(str),
+    state_service: StateService = Depends(get_state_service),
+):
     state_data = await request.body()
     try:
-        await state_service.save_state("state_identifier", state_data)
+        await state_service.save_state("state_identifier", state_data, operation_id=ID)
         return LockResponseSchema()
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))

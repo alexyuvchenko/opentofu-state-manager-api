@@ -71,21 +71,6 @@ clean-docker: ## Removing all: containers, images and volumes
 	@docker image prune -af
 	@docker system prune --volumes
 
-clean: ## Clean all useless data
-	rm -rf `find . -name __pycache__`
-	rm -f `find . -type f -name '*.py[co]' `
-	rm -f `find . -type f -name '*~' `
-	rm -f `find . -type f -name '.*~' `
-	rm -f `find . -type f -name '@*' `
-	rm -f `find . -type f -name '#*#' `
-	rm -f `find . -type f -name '*.orig' `
-	rm -f `find . -type f -name '*.rej' `
-	rm -f .coverage
-	rm -rf htmlcov
-	rm -rf docs/_build/
-	rm -rf coverage.xml
-	rm -rf dist
-
 # Database migrations
 migrate: ## Run all pending migrations
 	@printf "\n=> Running database migrations...\n\n"
@@ -128,6 +113,21 @@ local-format: ## Format code locally
 	@printf "\n=> Formatting code locally...\n\n"
 	@source .venv/bin/activate && black src tests
 	@source .venv/bin/activate && isort src tests
+
+clean: ## Clean all useless data
+	rm -rf `find . -name __pycache__`
+	rm -f `find . -type f -name '*.py[co]' `
+	rm -f `find . -type f -name '*~' `
+	rm -f `find . -type f -name '.*~' `
+	rm -f `find . -type f -name '@*' `
+	rm -f `find . -type f -name '#*#' `
+	rm -f `find . -type f -name '*.orig' `
+	rm -f `find . -type f -name '*.rej' `
+	rm -f .coverage
+	rm -rf htmlcov
+	rm -rf docs/_build/
+	rm -rf coverage.xml
+	rm -rf dist
 
 help:
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) \
