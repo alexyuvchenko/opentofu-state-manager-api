@@ -1,8 +1,3 @@
-"""
-Database session management module.
-Provides async session factory and dependency injection for database sessions.
-"""
-
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -11,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from src.settings import get_settings
+from src.icore.settings import get_settings
 
 settings = get_settings()
 

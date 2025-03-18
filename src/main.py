@@ -7,14 +7,12 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from src.controllers import health, opentofu
 from src.core.logging import setup_logging
-from src.settings import get_settings
+from src.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
 setup_logging(settings)
-
-API_PREFIX = "/api"
 
 
 @asynccontextmanager
@@ -50,6 +48,7 @@ def init_fastapi_app() -> FastAPI:
     # Include routers
     app.include_router(health.router)
     app.include_router(opentofu.router)
+
     return app
 
 

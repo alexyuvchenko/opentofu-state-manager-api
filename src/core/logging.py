@@ -3,7 +3,7 @@ import sys
 
 from json_log_formatter import JSONFormatter
 
-from src.settings import LogFormat, Settings
+from src.core.settings import LogFormat, Settings
 
 logger = logging.getLogger(__name__)
 

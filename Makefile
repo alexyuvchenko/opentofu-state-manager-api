@@ -20,7 +20,7 @@ start: ## Start services
 
 build: ## Build services
 	@printf "\n=> Build services...\n\n"
-	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) build --force-rm
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) build
 
 rebuild: ## Rebuild and start services
 	@printf "\n=> Rebuild services...\n\n"
