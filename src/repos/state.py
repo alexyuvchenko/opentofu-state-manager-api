@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.controllers.schema import LockRequestSchema
 from src.db.models import State
 from src.repos.schema import (
     StateCreateSchema,
@@ -25,7 +26,7 @@ class StateRepository:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def lock(self, name: str, lock_id: str, info: str) -> bool:
+    async def lock(self, name: str, lock_data: LockRequestSchema) -> bool:
         state = await self.get_by_name(name)
 
         if not state:
@@ -38,9 +39,9 @@ class StateRepository:
                 name=state_data.name,
                 state_hash=state_data.state_hash,
                 storage_path=state_data.storage_path,
-                locked_by=info,
-                locked_at=datetime.now(),
-                lock_id=lock_id,
+                locked_by=lock_data.who,
+                locked_at=lock_data.created.replace(tzinfo=None),
+                lock_id=lock_data.Id,
             )
             self.session.add(state)
             await self.session.commit()
@@ -51,9 +52,9 @@ class StateRepository:
 
         # Lock the state
         update_data = StateUpdateSchema(
-            locked_by=info,
-            locked_at=datetime.now(),
-            lock_id=lock_id,
+            locked_by=lock_data.who,
+            locked_at=lock_data.created.replace(tzinfo=None),
+            lock_id=lock_data.Id,
         )
         state.locked_by = update_data.locked_by
         state.locked_at = update_data.locked_at

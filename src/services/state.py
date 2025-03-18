@@ -5,6 +5,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.controllers.schema import LockRequestSchema
 from src.repos.state import StateRepository
 from src.repos.storage import BaseStorageRepository, MinioStorageRepository
 
@@ -34,15 +35,10 @@ class StateService:
         try:
             state_str = state_data.decode("utf-8") if isinstance(state_data, bytes) else state_data
 
-            # Parse JSON data
             if isinstance(state_str, str):
                 json_data = json.loads(state_str)
             else:
                 json_data = state_str
-
-            # Ensure version is an integer
-            if not isinstance(json_data.get("version"), int):
-                json_data["version"] = 4
 
             return json.dumps(json_data).encode()
         except json.JSONDecodeError:
@@ -88,8 +84,8 @@ class StateService:
         await self.storage_repo.put(storage_path, formatted_state)
         await self.state_repo.save_state(name, state_hash, storage_path, operation_id)
 
-    async def lock_state(self, name: str, lock_id: str, info: str) -> bool:
-        return await self.state_repo.lock(name, lock_id, info)
+    async def lock_state(self, name: str, lock_data: LockRequestSchema) -> bool:
+        return await self.state_repo.lock(name, lock_data)
 
     async def unlock_state(self, name: str, lock_id: str) -> bool:
         return await self.state_repo.unlock(name, lock_id)

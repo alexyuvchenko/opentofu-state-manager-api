@@ -1,14 +1,8 @@
 from datetime import datetime
-from typing import (
-    Dict,
-    List,
-    Optional,
-)
 
 from pydantic import BaseModel, Field
 
 
-# Response models
 class HealthResponse(BaseModel):
     status: str
 
@@ -27,8 +21,13 @@ class InfoResponse(BaseModel):
 
 
 class LockRequestSchema(BaseModel):
-    ID: str
-    Info: Optional[str] = ""
+    Id: str = Field(default="", alias="ID")
+    info: str = Field(default="", alias="Info")
+    created: datetime = Field(default_factory=datetime.now, alias="Created")
+    operation: str = Field(default="", alias="Operation")
+    path: str = Field(default="", alias="Path")
+    version: str = Field(default="", alias="Version")
+    who: str = Field(default="", alias="Who")
 
 
 class LockResponseSchema(BaseModel):

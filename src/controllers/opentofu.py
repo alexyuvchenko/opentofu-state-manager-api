@@ -27,7 +27,7 @@ async def get_state_service(session: AsyncSession = Depends(get_session)) -> Sta
 @router.get("/state_identifier", status_code=status.HTTP_200_OK)
 async def get_state(request: Request, state_service: StateService = Depends(get_state_service)):
     state_data = await state_service.get_state("state_identifier")
-    # The service now always returns at least an initial state with generated lineage
+    logger.info(f"State data: {state_data}")
     return Response(content=state_data, media_type="application/json")
 
 
@@ -54,11 +54,9 @@ async def save_state(
     response_model=LockResponseSchema,
 )
 async def lock_state(request: Request, state_service: StateService = Depends(get_state_service)):
-    lock_request = LockRequestSchema.model_validate(await request.json())
-
-    success = await state_service.lock_state(
-        "state_identifier", lock_request.ID, lock_request.Info
-    )
+    lock_data = LockRequestSchema.model_validate(await request.json())
+    logger.info(f"Lock data: {lock_data}")
+    success = await state_service.lock_state("state_identifier", lock_data)
     if not success:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="State is already locked")
 
@@ -74,7 +72,7 @@ async def lock_state(request: Request, state_service: StateService = Depends(get
 async def unlock_state(request: Request, state_service: StateService = Depends(get_state_service)):
     lock_request = LockRequestSchema.model_validate(await request.json())
 
-    success = await state_service.unlock_state("state_identifier", lock_request.ID)
+    success = await state_service.unlock_state("state_identifier", lock_request.Id)
     if not success:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invalid lock ID")
 
