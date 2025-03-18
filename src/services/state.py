@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,13 +11,14 @@ from src.repos.storage import BaseStorageRepository, MinioStorageRepository
 logger = logging.getLogger(__name__)
 
 
-EMPTY_STATE = {
-    "version": 3,
-    "terraform_version": "1.1.0",
-    "serial": 1,
+INITIAL_STATE = {
+    "version": 4,
+    "terraform_version": "1.9.0",
+    "serial": 0,
     "lineage": "",
     "outputs": {},
     "resources": [],
+    "check_results": None,
 }
 
 
@@ -29,9 +31,7 @@ class StateService:
         return hashlib.sha256(state_data).hexdigest()
 
     def _ensure_valid_state_format(self, state_data: bytes) -> bytes:
-        """Ensure state data is in the correct format for OpenTofu."""
         try:
-            # Convert bytes to string if needed
             state_str = state_data.decode("utf-8") if isinstance(state_data, bytes) else state_data
 
             # Parse JSON data
@@ -46,23 +46,27 @@ class StateService:
 
             return json.dumps(json_data).encode()
         except json.JSONDecodeError:
-            return json.dumps(EMPTY_STATE).encode()
+            return json.dumps(INITIAL_STATE).encode()
+
+    def _generate_initial_state(self) -> bytes:
+        initial_state = INITIAL_STATE.copy()
+        initial_state["lineage"] = str(uuid.uuid4())
+        return json.dumps(initial_state).encode()
 
     async def get_state(self, name: str) -> bytes:
-        """Get the OpenTofu state."""
         state = await self.state_repo.get_by_name(name)
 
         if not state:
-            logger.info(f"No state found for {name}, returning empty state")
-            return None
+            logger.info(f"No state found for {name}, returning initial state")
+            return self._generate_initial_state()
 
         state_data = await self.storage_repo.get(state.storage_path)
 
         if not state_data:
             logger.warning(
-                f"State file not found in storage at {state.storage_path}, returning empty state"
+                f"State file not found in storage at {state.storage_path}, returning initial state"
             )
-            return None
+            return self._generate_initial_state()
 
         return self._ensure_valid_state_format(state_data)
 
@@ -72,9 +76,9 @@ class StateService:
         try:
             json.loads(state_data)
             formatted_state = self._ensure_valid_state_format(state_data)
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in state data: {e}")
-            raise ValueError(f"Invalid JSON in state data: {str(e)}")
+        except json.JSONDecodeError as exc:
+            logger.error(f"Invalid JSON in state data: {exc}")
+            raise ValueError(f"Invalid JSON in state data: {str(exc)}")
 
         state_hash = self._get_hash(formatted_state)
         logger.info(f"Saving state for {name}, hash: {state_hash}")

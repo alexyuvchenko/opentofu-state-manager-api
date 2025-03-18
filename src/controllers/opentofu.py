@@ -26,9 +26,6 @@ async def get_state_service(session: AsyncSession = Depends(get_session)) -> Sta
 @router.get("/state_identifier", status_code=status.HTTP_200_OK)
 async def get_state(request: Request, state_service: StateService = Depends(get_state_service)):
     state_data = await state_service.get_state("state_identifier")
-    if not state_data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
-
     return Response(content=state_data, media_type="application/json")
 
 

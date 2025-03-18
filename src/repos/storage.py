@@ -67,10 +67,10 @@ class MinioStorageRepository(BaseStorageRepository):
                 await client.put_object(
                     Bucket=self.bucket_name, Key=path, Body=data, ContentType="application/json"
                 )
-        except Exception as e:
+        except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Storage error: {str(e)}",
+                detail=f"Storage error: {str(exc)}",
             )
 
     async def delete(self, path: str) -> None:
@@ -87,8 +87,8 @@ class MinioStorageRepository(BaseStorageRepository):
                     await client.head_bucket(Bucket=self.bucket_name)
                 except ClientError:
                     await client.create_bucket(Bucket=self.bucket_name)
-        except Exception as e:
-            logger.error(f"Error managing bucket: {e}")
+        except Exception as exc:
+            logger.error(f"Error managing bucket: {exc}")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"S3 error: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"S3 error: {str(exc)}"
             )
