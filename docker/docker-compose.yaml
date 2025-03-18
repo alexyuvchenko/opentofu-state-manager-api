@@ -7,13 +7,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: opentofu
-      POSTGRES_PASSWORD: opentofu
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: opentofu_state_manager
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opentofu"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -23,14 +23,14 @@ services:
   minio:
     image: minio/minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # default port
+      - "9001:9001"  # console port
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
+    command: server /data --console-address :9001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -50,7 +50,7 @@ services:
     environment:
       DEBUG: false
       PYTHONASYNCIODEBUG: true  # enable the AsyncIO debug mode, print a warning message when a task takes more than 100ms to execute
-      DATABASE_URL: postgresql+asyncpg://opentofu:opentofu@postgres:5432/opentofu_state_manager
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/opentofu_state_manager
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -70,18 +70,18 @@ services:
       - ../migrations:/app/migrations
     working_dir: /app
     command: ["/bin/sh", "-c", "chmod +x /app/scripts/start.sh && /app/scripts/start.sh"]
-    networks:
-      - net
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
-
-networks:
-  net:
-    driver: bridge
+    networks:
+      - net
 
 volumes:
   postgres_data:
   minio_data:
+
+networks:
+  net:
+    driver: bridge
