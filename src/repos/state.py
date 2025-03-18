@@ -1,15 +1,16 @@
-"""
-State repository for database operations.
-"""
-
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import State
+from src.repos.schema import (
+    StateCreateSchema,
+    StateSchema,
+    StateUpdateSchema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,15 @@ class StateRepository:
         state = await self.get_by_name(name)
 
         if not state:
-            state = State(
+            state_data = StateCreateSchema(
                 name=name,
                 state_hash="",
                 storage_path=f"states/{name}/initial",
+            )
+            state = State(
+                name=state_data.name,
+                state_hash=state_data.state_hash,
+                storage_path=state_data.storage_path,
                 locked_by=info,
                 locked_at=datetime.now(),
                 lock_id=lock_id,
@@ -43,9 +49,15 @@ class StateRepository:
         if state.locked_by:
             return False
 
-        state.locked_by = info
-        state.locked_at = datetime.now()
-        state.lock_id = lock_id
+        # Lock the state
+        update_data = StateUpdateSchema(
+            locked_by=info,
+            locked_at=datetime.now(),
+            lock_id=lock_id,
+        )
+        state.locked_by = update_data.locked_by
+        state.locked_at = update_data.locked_at
+        state.lock_id = update_data.lock_id
         await self.session.commit()
         return True
 
@@ -55,23 +67,41 @@ class StateRepository:
         if not state or state.lock_id != lock_id:
             return False
 
-        state.locked_by = None
-        state.locked_at = None
-        state.lock_id = None
+        update_data = StateUpdateSchema(
+            locked_by=None,
+            locked_at=None,
+            lock_id=None,
+        )
+        state.locked_by = update_data.locked_by
+        state.locked_at = update_data.locked_at
+        state.lock_id = update_data.lock_id
         await self.session.commit()
         return True
 
-    async def save_state(self, name: str, state_hash: str, storage_path: str) -> State:
+    async def save_state(self, name: str, state_hash: str, storage_path: str) -> StateSchema:
         state = await self.get_by_name(name)
 
         if state:
-            state.state_hash = state_hash
-            state.storage_path = storage_path
+            update_data = StateUpdateSchema(
+                state_hash=state_hash,
+                storage_path=storage_path,
+            )
+            state.state_hash = update_data.state_hash
+            state.storage_path = update_data.storage_path
             state.updated_at = datetime.now()
         else:
-            state = State(name=name, state_hash=state_hash, storage_path=storage_path)
+            state_data = StateCreateSchema(
+                name=name,
+                state_hash=state_hash,
+                storage_path=storage_path,
+            )
+            state = State(
+                name=state_data.name,
+                state_hash=state_data.state_hash,
+                storage_path=state_data.storage_path,
+            )
             self.session.add(state)
 
         await self.session.commit()
         await self.session.refresh(state)
-        return state
+        return StateSchema.model_validate(state)

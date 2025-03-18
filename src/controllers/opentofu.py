@@ -1,5 +1,4 @@
 import logging
-from typing import Dict
 
 from fastapi import (
     APIRouter,
@@ -8,9 +7,10 @@ from fastapi import (
     Request,
     status,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.controllers.schema import LockRequestSchema, LockResponseSchema
 from src.db.session import get_session
 from src.services.state import StateService
 
@@ -24,58 +24,55 @@ async def get_state_service(session: AsyncSession = Depends(get_session)) -> Sta
 
 
 @router.get("/state_identifier", status_code=status.HTTP_200_OK)
-async def get_state(state_service: StateService = Depends(get_state_service)):
-    """
-    Get the OpenTofu state.
-    """
+async def get_state(request: Request, state_service: StateService = Depends(get_state_service)):
     state_data = await state_service.get_state("state_identifier")
     if not state_data:
-        raise HTTPException(status_code=404, detail="State not found")
-    return state_data
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="State not found")
+
+    return Response(content=state_data, media_type="application/json")
 
 
-@router.post("/state_identifier", status_code=status.HTTP_200_OK)
+@router.post(
+    "/state_identifier/{ID}", status_code=status.HTTP_200_OK, response_model=LockResponseSchema
+)
 async def save_state(request: Request, state_service: StateService = Depends(get_state_service)):
-    """
-    Save the OpenTofu state.
-    """
     state_data = await request.body()
-    await state_service.save_state("state_identifier", state_data)
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "ok"})
+    try:
+        await state_service.save_state("state_identifier", state_data)
+        return LockResponseSchema()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
-@router.api_route("/state_identifier/lock", methods=["LOCK"], status_code=status.HTTP_200_OK)
+@router.api_route(
+    "/state_identifier/lock",
+    methods=["LOCK"],
+    status_code=status.HTTP_200_OK,
+    response_model=LockResponseSchema,
+)
 async def lock_state(request: Request, state_service: StateService = Depends(get_state_service)):
-    """
-    Lock the OpenTofu state.
-    """
-    lock_data = await request.json()
-    lock_id = lock_data.get("ID")
-    info = lock_data.get("Info", "")
+    lock_request = LockRequestSchema.model_validate(await request.json())
 
-    if not lock_id:
-        raise HTTPException(status_code=400, detail="Lock ID is required")
-
-    success = await state_service.lock_state("state_identifier", lock_id, info)
+    success = await state_service.lock_state(
+        "state_identifier", lock_request.ID, lock_request.Info
+    )
     if not success:
-        raise HTTPException(status_code=409, detail="State is already locked")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="State is already locked")
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "ok"})
+    return LockResponseSchema()
 
 
-@router.api_route("/state_identifier/unlock", methods=["UNLOCK"], status_code=status.HTTP_200_OK)
+@router.api_route(
+    "/state_identifier/unlock",
+    methods=["UNLOCK"],
+    status_code=status.HTTP_200_OK,
+    response_model=LockResponseSchema,
+)
 async def unlock_state(request: Request, state_service: StateService = Depends(get_state_service)):
-    """
-    Unlock the OpenTofu state.
-    """
-    lock_data = await request.json()
-    lock_id = lock_data.get("ID")
+    lock_request = LockRequestSchema.model_validate(await request.json())
 
-    if not lock_id:
-        raise HTTPException(status_code=400, detail="Lock ID is required")
-
-    success = await state_service.unlock_state("state_identifier", lock_id)
+    success = await state_service.unlock_state("state_identifier", lock_request.ID)
     if not success:
-        raise HTTPException(status_code=409, detail="Invalid lock ID")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invalid lock ID")
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "ok"})
+    return LockResponseSchema()
