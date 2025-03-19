@@ -1,6 +1,5 @@
 from enum import Enum, StrEnum
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,29 +17,30 @@ class LogFormat(StrEnum):
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "OpenTofu State Manager API"
-    APP_DESCRIPTION: str = "API for managing OpenTofu state"
-    APP_VERSION: str = "0.1.0"
+    APP_NAME: str =  Field("OpenTofu State Manager API", alias="APP_NAME")
+    APP_DESCRIPTION: str = Field("API for managing OpenTofu state", alias="APP_DESCRIPTION")
+    APP_VERSION: str =  Field("0.1.0", alias="APP_VERSION")
     ENVIRONMENT: Environment = Field(Environment.LOCAL, alias="ENVIRONMENT")
     ALLOWED_HOSTS: list[str] = Field(["*"], alias="ALLOWED_HOSTS")
+    LOG_LEVEL: str = Field("INFO", alias="LOG_LEVEL")
+    LOG_FORMAT: LogFormat =  Field(LogFormat.TEXT, alias="LOG_FORMAT")
+    DB_ECHO: bool = Field(False, alias="DB_ECHO")
+    
+    DB_USERNAME: str = Field("postgres", alias="DB_USERNAME")
+    DB_PASSWORD: str = Field("opentofu", alias="DB_PASSWORD")
+    DB_HOST: str = Field("localhost", alias="DB_HOST")
+    DB_PORT: str = Field("5432", alias="DB_PORT")
+    DB_NAME: str = Field("opentofu_state", alias="DB_NAME")
 
-    LOG_LEVEL: str = "INFO"
-    LOG_FORMAT: LogFormat = LogFormat.TEXT
+    MINIO_ENDPOINT: str = Field("localhost:9000", alias="MINIO_ENDPOINT")
+    MINIO_ACCESS_KEY: str = Field("minioadmin", alias="MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY: str = Field("minioadmin", alias="MINIO_SECRET_KEY")
+    MINIO_SECURE: bool = Field(False, alias="MINIO_SECURE")
+    MINIO_BUCKET_NAME: str = Field("opentofu-states", alias="MINIO_BUCKET_NAME")
 
-    # Database settings
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://opentofu:opentofu@localhost:5432/opentofu_state_manager"
-    )
-    DB_ECHO: bool = False
-    DB_POOL_SIZE: int = 5
-    DB_MAX_OVERFLOW: int = 10
-
-    # MinIO settings
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_SECURE: bool = False
-    MINIO_BUCKET_NAME: str = "opentofu-states"
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

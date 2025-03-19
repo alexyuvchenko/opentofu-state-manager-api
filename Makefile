@@ -14,6 +14,9 @@ PROJECT_NAME=opentofu-state-manager-api
 PROJECT_CONTAINER_NAME=api
 DOCKER_COMPOSE=docker/docker-compose.yaml
 
+# Default target
+all: help
+
 start: ## Start services
 	@printf "\n=> Start services...\n\n"
 	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) up
@@ -114,7 +117,7 @@ local-format: ## Format code locally
 	@source .venv/bin/activate && black src tests
 	@source .venv/bin/activate && isort src tests
 
-clean: ## Clean all useless data
+loacl-clean: ## Clean all useless data
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
 	rm -f `find . -type f -name '*~' `
