@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
@@ -6,14 +6,13 @@ from fastapi import status
 from src.controllers.schema import HealthResponse
 
 
-
 @pytest.mark.asyncio
 async def test_health_endpoint(async_client):
 
     response = await async_client.get("/health")
-    
+
     assert response.status_code == status.HTTP_200_OK
-    
+
     response_data = response.json()
     health_response = HealthResponse(**response_data)
     assert health_response.status == "healthy"
@@ -21,10 +20,11 @@ async def test_health_endpoint(async_client):
 
 class MockDateTime:
     """Mock datetime class for testing with a fixed timestamp.
-    
+
     This class mocks the datetime.now() method to return a MagicMock object
     that will return a fixed timestamp when isoformat() is called on it.
     """
+
     @staticmethod
     def now():
         """Return a mock datetime with a fixed timestamp."""
@@ -44,10 +44,10 @@ async def test_info_endpoint(async_client):
     mock_settings.ENVIRONMENT.value = "local"
 
     with patch("src.controllers.health.settings", mock_settings):
-        
+
         response = await async_client.get("/info")
-        
+
         assert response.status_code == status.HTTP_200_OK
-        
+
         response_data = response.json()
         assert response_data["app_name"] == "Test App"

@@ -18,12 +18,13 @@ from src.controllers.schema import (
     StateVersionListResponseSchema,
     StateVersionResponseSchema,
 )
+from src.core.auth import get_api_token
 from src.db.session import get_session
 from src.services.state import StateService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["opentofu"])
+router = APIRouter(tags=["opentofu"], dependencies=[Depends(get_api_token)])
 
 
 async def get_state_service(session: AsyncSession = Depends(get_session)) -> StateService:
@@ -94,6 +95,7 @@ async def unlock_state(request: Request, state_service: StateService = Depends(g
 )
 async def get_state_versions(state_service: StateService = Depends(get_state_service)):
     versions = await state_service.get_state_versions("state_identifier")
+
     return StateVersionListResponseSchema(data=[version.model_dump() for version in versions])
 
 

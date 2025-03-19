@@ -12,11 +12,22 @@ A FastAPI application with basic health check endpoints.
 ### Running the Application
 
 1. Clone the repository
-2. Run the application using Docker Compose:
+2. Update the `.env` file with your secure API token
+3. Run the application using Docker Compose:
 
 ```bash
 make start
 ```
+
+### Authentication
+
+The API uses token-based authentication. To access protected endpoints, include the `X-API-Token` header in your requests:
+
+```
+X-API-Token: your-secure-api-token-here
+```
+
+The token value must match the `API_TOKEN` set in your environment variables.
 
 ### Development
 
@@ -116,6 +127,36 @@ Once the application is running, you can access the API documentation at:
 - `GET /api/info` - Detailed information about the application and its environment
 
 For complete API documentation including request and response schemas, refer to the Swagger UI or ReDoc documentation.
+
+## OpenTofu State Manager API
+
+This API allows you to store and retrieve OpenTofu state files using S3-compatible storage (MinIO) with aiobotocore.
+
+### Configuration
+
+To use this API with OpenTofu, add the following to your OpenTofu configuration:
+
+```hcl
+terraform {
+  backend "http" {
+    address = "http://localhost:8080/api/states/state_identifier"
+    lock_address = "http://localhost:8080/api/states/state_identifier/lock"
+    unlock_address = "http://localhost:8080/api/states/state_identifier/unlock"
+    headers = {
+      X-API-Token = "your-secure-api-token-here"
+    }
+  }
+}
+```
+
+### API Endpoints
+
+- `GET /api/states/state_identifier` - Retrieve state
+- `POST /api/states/state_identifier` - Store state
+- `LOCK /api/states/state_identifier/lock` - Lock state
+- `UNLOCK /api/states/state_identifier/unlock` - Unlock state
+
+These endpoints are designed to be compatible with OpenTofu's HTTP backend.
 
 ## License
 

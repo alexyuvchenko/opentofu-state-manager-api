@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field("INFO", alias="LOG_LEVEL")
     LOG_FORMAT: LogFormat = Field(LogFormat.TEXT, alias="LOG_FORMAT")
     DB_ECHO: bool = Field(False, alias="DB_ECHO")
+    API_TOKEN: str = Field("API_TOKEN=managing-opentofu-state-secure-api-token", alias="API_TOKEN")
 
     DB_USERNAME: str = Field("postgres", alias="DB_USERNAME")
     DB_PASSWORD: str = Field("opentofu", alias="DB_PASSWORD")

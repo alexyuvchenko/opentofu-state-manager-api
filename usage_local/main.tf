@@ -1,10 +1,12 @@
 terraform {
  
   backend "http" {
-    address        = "http://localhost:8000/state_identifier"
-    lock_address   = "http://localhost:8000/state_identifier/lock"
-    unlock_address = "http://localhost:8000/state_identifier/unlock"
-    # Optional: (Authentication token if implemented or any other required headers)
+    address        = "http://localhost:8080/state_identifier"
+    lock_address   = "http://localhost:8080/state_identifier/lock"
+    unlock_address = "http://localhost:8080/state_identifier/unlock"
+    headers = {
+      X-API-Token = "managing-opentofu-state-secure-api-token"
+    }
   }
 }
 

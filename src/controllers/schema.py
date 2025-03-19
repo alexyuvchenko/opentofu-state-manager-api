@@ -13,8 +13,9 @@ class SystemInfo(BaseModel):
 
 
 class InfoResponse(BaseModel):
-    app: str
+    app_name: str
     version: str
+    description: str
     environment: str
     timestamp: str
     system: SystemInfo

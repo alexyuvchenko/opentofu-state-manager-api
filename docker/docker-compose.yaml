@@ -69,6 +69,7 @@ services:
       LOG_FORMAT: ${LOG_FORMAT}
       DB_ECHO: ${DB_ECHO}
       PYTHONPATH: ${PYTHONPATH}
+      API_TOKEN: ${API_TOKEN}
     ports:
       - "8080:8000"
     volumes:
