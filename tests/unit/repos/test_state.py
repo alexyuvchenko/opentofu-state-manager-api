@@ -27,6 +27,7 @@ async def test_get_state_by_name(db_session):
     await repo.save_state(state_name)
 
     state = await repo.get_by_name(state_name)
+
     assert state is not None
     assert state.name == state_name
 
@@ -54,14 +55,17 @@ async def test_lock_unlock_state(db_session):
     assert lock_result is True
 
     state = await repo.get_by_name(state_name)
+
     assert state.lock_id == lock_data.Id
     assert state.locked_by == lock_data.who
     assert state.locked_at is not None
 
     unlock_result = await repo.unlock(state_name, lock_data.Id)
+
     assert unlock_result is True
 
     state = await repo.get_by_name(state_name)
+
     assert state.lock_id is None
     assert state.locked_by is None
     assert state.locked_at is None
@@ -83,9 +87,11 @@ async def test_create_state_on_lock(db_session):
     )
 
     lock_result = await repo.lock(state_name, lock_data)
+
     assert lock_result is True
 
     state = await repo.get_by_name(state_name)
+
     assert state is not None
     assert state.name == state_name
     assert state.lock_id == lock_data.Id

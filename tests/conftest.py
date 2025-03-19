@@ -5,11 +5,10 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.core.settings import get_settings
+from src.core.settings import Settings, get_settings
 from src.db.models import Base
 from src.main import init_fastapi_app
 
@@ -34,6 +33,28 @@ def app():
 async def async_client(app: FastAPI):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        yield client
+
+
+@pytest.fixture(scope="session")
+def test_settings() -> Settings:
+    settings = get_settings()
+    settings.API_TOKEN = "test-api-token"
+    return settings
+
+
+@pytest.fixture
+def auth_headers(test_settings):
+    return {"X-API-Token": test_settings.API_TOKEN}
+
+
+@pytest_asyncio.fixture
+async def auth_async_client(app: FastAPI, auth_headers, test_settings):
+    app.state.settings = test_settings
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_headers
     ) as client:
         yield client
 
