@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, tzinfo
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
@@ -88,6 +88,7 @@ class StateRepository:
             update_data = StateUpdateSchema(
                 state_hash=state_hash,
                 storage_path=storage_path,
+                operation_id=operation_id,
             )
             state.state_hash = update_data.state_hash
             state.storage_path = update_data.storage_path

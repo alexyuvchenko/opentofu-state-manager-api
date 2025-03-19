@@ -19,6 +19,7 @@ class StateUpdateSchema(BaseModel):
     locked_by: Optional[str] = None
     locked_at: Optional[datetime] = None
     lock_id: Optional[str] = None
+    operation_id: Optional[str] = None
 
 
 class StateSchema(StateBaseSchema):
@@ -30,6 +31,7 @@ class StateSchema(StateBaseSchema):
     locked_by: Optional[str] = None
     locked_at: Optional[datetime] = None
     lock_id: Optional[str] = None
+    operation_id: Optional[str] = None
 
     class Config:
         from_attributes = True
