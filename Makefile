@@ -117,7 +117,7 @@ local-format: ## Format code locally
 	@source .venv/bin/activate && black src tests
 	@source .venv/bin/activate && isort src tests
 
-loacl-clean: ## Clean all useless data
+local-clean: ## Clean all useless data
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
 	rm -f `find . -type f -name '*~' `

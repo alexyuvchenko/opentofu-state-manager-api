@@ -32,3 +32,16 @@ class LockRequestSchema(BaseModel):
 
 class LockResponseSchema(BaseModel):
     status: str = "ok"
+
+
+class StateVersionResponseSchema(BaseModel):
+    id: int
+    state_hash: str
+    storage_path: str
+    created_at: datetime
+    operation_id: str
+    state_id: int
+
+
+class StateVersionListResponseSchema(BaseModel):
+    data: list[StateVersionResponseSchema]

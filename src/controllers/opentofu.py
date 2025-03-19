@@ -4,6 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Path,
     Query,
     Request,
     status,
@@ -11,7 +12,12 @@ from fastapi import (
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.controllers.schema import LockRequestSchema, LockResponseSchema
+from src.controllers.schema import (
+    LockRequestSchema,
+    LockResponseSchema,
+    StateVersionListResponseSchema,
+    StateVersionResponseSchema,
+)
 from src.db.session import get_session
 from src.services.state import StateService
 
@@ -73,7 +79,37 @@ async def unlock_state(request: Request, state_service: StateService = Depends(g
     lock_request = LockRequestSchema.model_validate(await request.json())
 
     success = await state_service.unlock_state("state_identifier", lock_request.Id)
+    if success is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lock ID not found")
     if not success:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invalid lock ID")
 
     return LockResponseSchema()
+
+
+@router.get(
+    "/state_identifier/versions",
+    status_code=status.HTTP_200_OK,
+    response_model=StateVersionListResponseSchema,
+)
+async def get_state_versions(state_service: StateService = Depends(get_state_service)):
+    versions = await state_service.get_state_versions("state_identifier")
+    return StateVersionListResponseSchema(data=[version.model_dump() for version in versions])
+
+
+@router.get(
+    "/state_identifier/versions/{version_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=StateVersionResponseSchema,
+)
+async def get_state_version(
+    version_id: int, state_service: StateService = Depends(get_state_service)
+):
+    version = await state_service.get_state_version("state_identifier", version_id)
+    if not version:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"State version with id={version_id} not found",
+        )
+
+    return StateVersionResponseSchema(**version.model_dump())

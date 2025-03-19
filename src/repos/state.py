@@ -1,16 +1,17 @@
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.schema import LockRequestSchema
-from src.db.models import State
+from src.db.models import State, StateVersion
 from src.repos.schema import (
-    StateCreateSchema,
     StateSchema,
     StateUpdateSchema,
+    StateVersionCreateSchema,
+    StateVersionSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,15 +31,8 @@ class StateRepository:
         state = await self.get_by_name(name)
 
         if not state:
-            state_data = StateCreateSchema(
-                name=name,
-                state_hash="",
-                storage_path=f"states/{name}/initial",
-            )
             state = State(
-                name=state_data.name,
-                state_hash=state_data.state_hash,
-                storage_path=state_data.storage_path,
+                name=name,
                 locked_by=lock_data.who,
                 locked_at=lock_data.created.replace(tzinfo=None),
                 lock_id=lock_data.Id,
@@ -60,12 +54,16 @@ class StateRepository:
         state.locked_at = update_data.locked_at
         state.lock_id = update_data.lock_id
         await self.session.commit()
+
         return True
 
-    async def unlock(self, name: str, lock_id: str) -> bool:
+    async def unlock(self, name: str, lock_id: str) -> Optional[bool]:
         state = await self.get_by_name(name)
 
-        if not state or state.lock_id != lock_id:
+        if not state:
+            return None
+
+        if state.lock_id != lock_id:
             return False
 
         update_data = StateUpdateSchema(
@@ -77,37 +75,72 @@ class StateRepository:
         state.locked_at = update_data.locked_at
         state.lock_id = update_data.lock_id
         await self.session.commit()
+
         return True
 
-    async def save_state(
-        self, name: str, state_hash: str, storage_path: str, operation_id: str
-    ) -> StateSchema:
+    async def save_state(self, name: str) -> StateSchema:
         state = await self.get_by_name(name)
 
         if state:
-            update_data = StateUpdateSchema(
-                state_hash=state_hash,
-                storage_path=storage_path,
-                operation_id=operation_id,
-            )
-            state.state_hash = update_data.state_hash
-            state.storage_path = update_data.storage_path
             state.updated_at = datetime.now()
-            state.operation_id = operation_id
         else:
-            state_data = StateCreateSchema(
-                name=name,
-                state_hash=state_hash,
-                storage_path=storage_path,
-            )
-            state = State(
-                name=state_data.name,
-                state_hash=state_data.state_hash,
-                storage_path=state_data.storage_path,
-                operation_id=operation_id,
-            )
+            state = State(name=name)
             self.session.add(state)
 
         await self.session.commit()
         await self.session.refresh(state)
+
         return StateSchema.model_validate(state)
+
+
+class StateVersionRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create_version(
+        self, state_hash: str, storage_path: str, operation_id: str, state_id: int
+    ) -> StateVersionSchema:
+        state_version_data = StateVersionCreateSchema(
+            state_hash=state_hash,
+            storage_path=storage_path,
+            operation_id=operation_id,
+            state_id=state_id,
+        )
+
+        state_version = StateVersion(
+            state_hash=state_version_data.state_hash,
+            storage_path=state_version_data.storage_path,
+            operation_id=state_version_data.operation_id,
+            state_id=state_version_data.state_id,
+        )
+
+        self.session.add(state_version)
+        await self.session.commit()
+        await self.session.refresh(state_version)
+
+        return StateVersionSchema.model_validate(state_version)
+
+    async def get_versions_by_state_id(self, state_id: int) -> List[StateVersionSchema]:
+        query = (
+            select(StateVersion)
+            .where(StateVersion.state_id == state_id)
+            .order_by(StateVersion.created_at.desc())
+        )
+        result = await self.session.execute(query)
+        versions = result.scalars().all()
+
+        return [StateVersionSchema.model_validate(version) for version in versions]
+
+    async def get_version_by_id(
+        self, state_id: int, version_id: int
+    ) -> Optional[StateVersionSchema]:
+        query = select(StateVersion).where(
+            StateVersion.state_id == state_id, StateVersion.id == version_id
+        )
+        result = await self.session.execute(query)
+        state_version = result.scalars().first()
+
+        if not state_version:
+            return None
+
+        return StateVersionSchema.model_validate(state_version)

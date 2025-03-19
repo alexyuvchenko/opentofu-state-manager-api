@@ -1,14 +1,10 @@
 import logging
-from typing import (
-    Any,
-    Dict,
-)
+import platform
+import sys
+from datetime import datetime
+from typing import Any, Dict
 
-from fastapi import (
-    APIRouter,
-    Request,
-    status,
-)
+from fastapi import APIRouter, status
 
 from src.controllers.schema import HealthResponse, InfoResponse
 from src.core.settings import get_settings
@@ -25,10 +21,15 @@ async def health() -> Dict[str, str]:
 
 
 @router.get("/info", response_model=InfoResponse, status_code=status.HTTP_200_OK)
-async def info(request: Request) -> Dict[str, Any]:
+async def info() -> Dict[str, Any]:
     return {
-        "name": settings.APP_NAME,
+        "app_name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "description": settings.APP_DESCRIPTION,
         "environment": settings.ENVIRONMENT.value,
+        "timestamp": datetime.now().isoformat(),
+        "system": {
+            "python_version": sys.version,
+            "platform": platform.platform(),
+        },
     }

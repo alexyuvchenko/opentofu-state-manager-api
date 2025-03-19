@@ -17,15 +17,15 @@ class LogFormat(StrEnum):
 
 
 class Settings(BaseSettings):
-    APP_NAME: str =  Field("OpenTofu State Manager API", alias="APP_NAME")
+    APP_NAME: str = Field("OpenTofu State Manager API", alias="APP_NAME")
     APP_DESCRIPTION: str = Field("API for managing OpenTofu state", alias="APP_DESCRIPTION")
-    APP_VERSION: str =  Field("0.1.0", alias="APP_VERSION")
+    APP_VERSION: str = Field("0.1.0", alias="APP_VERSION")
     ENVIRONMENT: Environment = Field(Environment.LOCAL, alias="ENVIRONMENT")
     ALLOWED_HOSTS: list[str] = Field(["*"], alias="ALLOWED_HOSTS")
     LOG_LEVEL: str = Field("INFO", alias="LOG_LEVEL")
-    LOG_FORMAT: LogFormat =  Field(LogFormat.TEXT, alias="LOG_FORMAT")
+    LOG_FORMAT: LogFormat = Field(LogFormat.TEXT, alias="LOG_FORMAT")
     DB_ECHO: bool = Field(False, alias="DB_ECHO")
-    
+
     DB_USERNAME: str = Field("postgres", alias="DB_USERNAME")
     DB_PASSWORD: str = Field("opentofu", alias="DB_PASSWORD")
     DB_HOST: str = Field("localhost", alias="DB_HOST")

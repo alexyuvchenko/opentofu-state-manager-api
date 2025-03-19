@@ -2,11 +2,13 @@ import hashlib
 import json
 import logging
 import uuid
+from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.schema import LockRequestSchema
-from src.repos.state import StateRepository
+from src.repos.schema import StateVersionSchema
+from src.repos.state import StateRepository, StateVersionRepository
 from src.repos.storage import BaseStorageRepository, MinioStorageRepository
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ INITIAL_STATE = {
 class StateService:
     def __init__(self, session: AsyncSession):
         self.state_repo = StateRepository(session)
+        self.state_version_repo = StateVersionRepository(session)
         self.storage_repo: BaseStorageRepository = MinioStorageRepository()
 
     def _get_hash(self, state_data: bytes) -> str:
@@ -56,11 +59,19 @@ class StateService:
             logger.info(f"No state found for {name}, returning initial state")
             return self._generate_initial_state()
 
-        state_data = await self.storage_repo.get(state.storage_path)
+        # Get latest state version
+        versions = await self.state_version_repo.get_versions_by_state_id(state.id)
+        if not versions:
+            logger.info(f"No state versions found for {name}, returning initial state")
+            return self._generate_initial_state()
+
+        latest_version = versions[0]
+
+        state_data = await self.storage_repo.get(latest_version.storage_path)
 
         if not state_data:
             logger.warning(
-                f"State file not found in storage at {state.storage_path}, returning initial state"
+                f"State file not found in storage at {latest_version.storage_path}, returning initial state"
             )
             return self._generate_initial_state()
 
@@ -82,10 +93,37 @@ class StateService:
         storage_path = f"states/{name}/{state_hash}_{operation_id}"
 
         await self.storage_repo.put(storage_path, formatted_state)
-        await self.state_repo.save_state(name, state_hash, storage_path, operation_id)
+        state = await self.state_repo.save_state(name)
+
+        # Save state version for history
+        if state and state.id:
+            await self.state_version_repo.create_version(
+                state_hash=state_hash,
+                storage_path=storage_path,
+                operation_id=operation_id,
+                state_id=state.id,
+            )
 
     async def lock_state(self, name: str, lock_data: LockRequestSchema) -> bool:
         return await self.state_repo.lock(name, lock_data)
 
     async def unlock_state(self, name: str, lock_id: str) -> bool:
         return await self.state_repo.unlock(name, lock_id)
+
+    async def get_state_versions(self, name: str) -> List[StateVersionSchema]:
+        state = await self.state_repo.get_by_name(name)
+        if not state:
+            return []
+
+        return await self.state_version_repo.get_versions_by_state_id(state.id)
+
+    async def get_state_version(self, name: str, version_id: int) -> Optional[StateVersionSchema]:
+        state = await self.state_repo.get_by_name(name)
+        if not state:
+            return None
+
+        version = await self.state_version_repo.get_version_by_id(state.id, version_id)
+        if not version:
+            return None
+
+        return version

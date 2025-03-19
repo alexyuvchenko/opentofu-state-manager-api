@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.controllers.schema import LockRequestSchema
+from src.repos.schema import StateVersionSchema
 from src.services.state import StateService
 
 
@@ -18,42 +19,73 @@ def mock_state_repo():
 
 
 @pytest.fixture
+def mock_state_version_repo():
+    mock_repo = AsyncMock()
+    mock_repo.get_versions_by_state_id.return_value = []
+    mock_repo.create_version.return_value = None
+
+    return mock_repo
+
+
+@pytest.fixture
 def mock_storage_repo():
     mock_repo = AsyncMock()
     mock_repo.get.return_value = json.dumps({"version": 4, "terraform_version": "1.9.0"}).encode()
     mock_repo.put.return_value = None
     mock_repo.ensure_bucket_exists.return_value = None
+
     return mock_repo
 
 
 @pytest.fixture
-def state_service(mock_state_repo, mock_storage_repo):
+def state_service(mock_state_repo, mock_state_version_repo, mock_storage_repo):
     service = StateService(AsyncMock())
     service.state_repo = mock_state_repo
+    service.state_version_repo = mock_state_version_repo
     service.storage_repo = mock_storage_repo
+
     return service
 
 
 @pytest.mark.asyncio
-async def test_get_state(state_service, mock_state_repo, mock_storage_repo):
+async def test_get_state(
+    state_service, mock_state_repo, mock_state_version_repo, mock_storage_repo
+):
     mock_state = MagicMock()
-    mock_state.storage_path = "states/test-state/test-hash"
+    mock_state.id = 1
     mock_state_repo.get_by_name.return_value = mock_state
+
+    mock_version = StateVersionSchema(
+        id=1,
+        state_hash="test-hash",
+        storage_path="states/test-state/test-hash",
+        created_at=MagicMock(),
+        operation_id="test-op",
+        state_id=1,
+    )
+    mock_state_version_repo.get_versions_by_state_id.return_value = [mock_version]
 
     state_data = await state_service.get_state("test-state")
 
     assert json.loads(state_data) == {"version": 4, "terraform_version": "1.9.0"}
+    mock_storage_repo.get.assert_called_once_with("states/test-state/test-hash")
 
 
 @pytest.mark.asyncio
-async def test_save_state(state_service, mock_state_repo, mock_storage_repo):
+async def test_save_state(state_service, mock_state_repo, mock_state_version_repo):
+    mock_state = MagicMock()
+    mock_state.id = 1
+    mock_state_repo.save_state.return_value = mock_state
+
     state_data = json.dumps({"version": 4, "terraform_version": "1.9.0"}).encode()
 
     await state_service.save_state("test-state", state_data, "test-op-id")
 
+    mock_state_version_repo.create_version.assert_called_once()
+
 
 @pytest.mark.asyncio
-async def test_lock_state(state_service, mock_state_repo):
+async def test_lock_state(state_service):
     lock_data = LockRequestSchema(Id="test-lock-id", info="Test lock")
 
     result = await state_service.lock_state("test-state", lock_data)
@@ -62,7 +94,7 @@ async def test_lock_state(state_service, mock_state_repo):
 
 
 @pytest.mark.asyncio
-async def test_unlock_state(state_service, mock_state_repo):
+async def test_unlock_state(state_service):
     result = await state_service.unlock_state("test-state", "test-lock-id")
 
     assert result is True

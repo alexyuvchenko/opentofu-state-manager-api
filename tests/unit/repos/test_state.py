@@ -9,35 +9,26 @@ from src.repos.state import StateRepository
 @pytest.mark.asyncio
 async def test_save_state(db_session):
     repo = StateRepository(db_session)
+    state_name = "test-state"
 
-    state_hash = "test-hash"
-    storage_path = "states/test-state/test-hash"
-    operation_id = "test-op-id"
+    result = await repo.save_state(state_name)
 
-    result = await repo.save_state(state_hash, state_hash, storage_path, operation_id)
-
-    assert result.name == state_hash
-    assert result.state_hash == state_hash
-    assert result.storage_path == storage_path
-    assert result.operation_id == operation_id
+    assert result.name == state_name
+    assert hasattr(result, "id")
+    assert hasattr(result, "created_at")
+    assert hasattr(result, "updated_at")
 
 
 @pytest.mark.asyncio
 async def test_get_state_by_name(db_session):
     repo = StateRepository(db_session)
-
     state_name = "test-state"
-    state_hash = "test-hash"
-    storage_path = "states/test-state/test-hash"
-    operation_id = "test-op-id"
 
-    await repo.save_state(state_name, state_hash, storage_path, operation_id)
+    await repo.save_state(state_name)
 
     state = await repo.get_by_name(state_name)
     assert state is not None
     assert state.name == state_name
-    assert state.storage_path == storage_path
-    assert state.operation_id == operation_id
 
 
 @pytest.mark.asyncio
@@ -47,7 +38,7 @@ async def test_lock_unlock_state(db_session):
     state_name = "lock-test-state"
     path = "test/path"
 
-    await repo.save_state(state_name, "hash", path, "op-id")
+    await repo.save_state(state_name)
 
     lock_data = LockRequestSchema(
         ID="test-lock-id",

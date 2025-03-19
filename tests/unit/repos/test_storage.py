@@ -8,7 +8,7 @@ from src.repos.storage import MinioStorageRepository
 @pytest.fixture
 def mock_s3_client():
     mock_client = AsyncMock()
-    # Mock the response for get_object
+
     mock_stream = AsyncMock()
     mock_stream.__aenter__.return_value = mock_stream
     mock_stream.read.return_value = b'{"version": 4, "terraform_version": "1.9.0"}'

@@ -40,26 +40,24 @@ async def async_client(app: FastAPI):
 
 @pytest_asyncio.fixture
 async def db_engine():
-    # Use postgres credentials directly for testing
+    async def get_postgres_connection():
+        return await asyncpg.connect(
+            host=settings.DB_HOST,
+            port=settings.DB_PORT,
+            user=settings.DB_USERNAME,
+            password=settings.DB_PASSWORD,
+            database="postgres",
+        )
+
     test_db_name = f"{settings.DB_NAME}_test"
+    conn = await get_postgres_connection()
 
-    # Connect to default postgres db to manage test database
-    conn = await asyncpg.connect(
-        host=settings.DB_HOST,
-        port=settings.DB_PORT,
-        user="postgres",
-        password="postgres",
-        database="postgres",
-    )
-
-    # Drop test database if it exists and create a fresh one
     await conn.execute(f"DROP DATABASE IF EXISTS {test_db_name}")
     await conn.execute(f"CREATE DATABASE {test_db_name}")
     await conn.close()
 
-    # Connect to the test database
     test_engine = create_async_engine(
-        f"postgresql+asyncpg://postgres:postgres@{settings.DB_HOST}:{settings.DB_PORT}/{test_db_name}"
+        f"postgresql+asyncpg://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{test_db_name}"
     )
 
     async with test_engine.begin() as conn:
@@ -69,16 +67,8 @@ async def db_engine():
 
     await test_engine.dispose()
 
-    # Connect to default postgres db again to drop test database
-    conn = await asyncpg.connect(
-        host=settings.DB_HOST,
-        port=settings.DB_PORT,
-        user="postgres",
-        password="postgres",
-        database="postgres",
-    )
+    conn = await get_postgres_connection()
 
-    # Close all connections and drop database
     await conn.execute(
         f"""
         SELECT pg_terminate_backend(pg_stat_activity.pid)
