@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.schema import LockRequestSchema
-from src.db.models import State, StateVersion
+from src.db.tables import State, StateVersion
 from src.repos.schema import (
     StateSchema,
     StateUpdateSchema,

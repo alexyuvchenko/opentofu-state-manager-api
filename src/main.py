@@ -17,9 +17,10 @@ setup_logging(settings)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Startup opentofu-state-manager-api app")
+    logger.info(f"Startup {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.debug(f"App configuration: title='{app.title}', docs_url='{app.docs_url}', environment='{settings.ENVIRONMENT.value}'")
     yield
-    logger.info("Shutdown opentofu-state-manager-api app")
+    logger.info(f"Shutdown {settings.APP_NAME} v{settings.APP_VERSION}")
 
 
 def init_fastapi_app() -> FastAPI:
@@ -27,15 +28,12 @@ def init_fastapi_app() -> FastAPI:
         title=settings.APP_NAME,
         description=settings.APP_DESCRIPTION,
         version=settings.APP_VERSION,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
         lifespan=lifespan,
     )
 
-    # Store settings in app state for access in endpoints
     app.state.settings = settings
 
+    logger.debug("Configuring CORS middleware")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -43,9 +41,10 @@ def init_fastapi_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    logger.debug(f"Configuring TrustedHost middleware with hosts: {settings.ALLOWED_HOSTS}")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
 
-    # Include routers
+    logger.debug("Including routers: health, opentofu")
     app.include_router(health.router)
     app.include_router(opentofu.router)
 

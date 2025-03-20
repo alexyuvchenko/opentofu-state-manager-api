@@ -8,7 +8,7 @@ ENV PYTHONPATH="/app"
 
 WORKDIR ${PYSETUP_PATH}
 
-RUN pip install --no-cache-dir --ignore-installed poetry==2.1.0
+RUN pip install --no-cache-dir --ignore-installed poetry==2.1.1
 
 COPY poetry.lock pyproject.toml ./
 

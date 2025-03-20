@@ -4,7 +4,6 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Path,
     Query,
     Request,
     status,
@@ -47,10 +46,13 @@ async def save_state(
     state_service: StateService = Depends(get_state_service),
 ):
     state_data = await request.body()
+    logger.info(f"Saving state with operation ID: {ID}")
     try:
         await state_service.save_state("state_identifier", state_data, operation_id=ID)
+        logger.info(f"Successfully saved state for operation ID: {ID}")
         return LockResponseSchema()
     except ValueError as exc:
+        logger.error(f"Failed to save state for operation ID {ID}: {str(exc)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
@@ -107,11 +109,13 @@ async def get_state_versions(state_service: StateService = Depends(get_state_ser
 async def get_state_version(
     version_id: int, state_service: StateService = Depends(get_state_service)
 ):
+    logger.info(f"Retrieving state version: {version_id}")
     version = await state_service.get_state_version("state_identifier", version_id)
     if not version:
+        logger.warning(f"State version not found: {version_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"State version with id={version_id} not found",
         )
-
+    logger.debug(f"Successfully retrieved state version: {version_id}")
     return StateVersionResponseSchema(**version.model_dump())

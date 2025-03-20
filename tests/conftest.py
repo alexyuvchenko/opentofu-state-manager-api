@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.core.settings import Settings, get_settings
-from src.db.models import Base
+from src.db.tables import Base
 from src.main import init_fastapi_app
 
 

@@ -34,19 +34,6 @@ class StateService:
     def _get_hash(self, state_data: bytes) -> str:
         return hashlib.sha256(state_data).hexdigest()
 
-    def _ensure_valid_state_format(self, state_data: bytes) -> bytes:
-        try:
-            state_str = state_data.decode("utf-8") if isinstance(state_data, bytes) else state_data
-
-            if isinstance(state_str, str):
-                json_data = json.loads(state_str)
-            else:
-                json_data = state_str
-
-            return json.dumps(json_data).encode()
-        except json.JSONDecodeError:
-            return json.dumps(INITIAL_STATE).encode()
-
     def _generate_initial_state(self) -> bytes:
         initial_state = INITIAL_STATE.copy()
         initial_state["lineage"] = str(uuid.uuid4())
@@ -59,14 +46,12 @@ class StateService:
             logger.info(f"No state found for {name}, returning initial state")
             return self._generate_initial_state()
 
-        # Get latest state version
         versions = await self.state_version_repo.get_versions_by_state_id(state.id)
         if not versions:
             logger.info(f"No state versions found for {name}, returning initial state")
             return self._generate_initial_state()
 
         latest_version = versions[0]
-
         state_data = await self.storage_repo.get(latest_version.storage_path)
 
         if not state_data:
@@ -75,27 +60,24 @@ class StateService:
             )
             return self._generate_initial_state()
 
-        return self._ensure_valid_state_format(state_data)
+        return state_data
 
     async def save_state(self, name: str, state_data: bytes, operation_id: str) -> None:
         await self.storage_repo.ensure_bucket_exists()
 
         try:
             json.loads(state_data)
-            formatted_state = self._ensure_valid_state_format(state_data)
         except json.JSONDecodeError as exc:
             logger.error(f"Invalid JSON in state data: {exc}")
             raise ValueError(f"Invalid JSON in state data: {str(exc)}")
 
-        state_hash = self._get_hash(formatted_state)
-
-        logger.info(f"Saving state for {name}, hash: {state_hash}, operation: {operation_id}")
+        state_hash = self._get_hash(state_data)
         storage_path = f"states/{name}/{state_hash}_{operation_id}"
 
-        await self.storage_repo.put(storage_path, formatted_state)
-        state = await self.state_repo.save_state(name)
+        logger.info(f"Saving state for {name}, hash: {state_hash}, operation: {operation_id}")
+        await self.storage_repo.put(storage_path, state_data)
 
-        # Save state version for history
+        state = await self.state_repo.save_state(name)
         if state and state.id:
             await self.state_version_repo.create_version(
                 state_hash=state_hash,
@@ -114,7 +96,6 @@ class StateService:
         state = await self.state_repo.get_by_name(name)
         if not state:
             return []
-
         return await self.state_version_repo.get_versions_by_state_id(state.id)
 
     async def get_state_version(self, name: str, version_id: int) -> Optional[StateVersionSchema]:
