@@ -1,10 +1,10 @@
 import asyncio
 
-import asyncpg
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -12,20 +12,27 @@ from src.core.settings import Settings, get_settings
 from src.db.models import Base
 from src.main import init_fastapi_app
 
-settings = get_settings()
-
 
 @pytest.fixture(scope="session", autouse=True)
 def event_loop():
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
+@pytest.fixture(scope="session")
+def test_settings() -> Settings:
+    settings = get_settings()
+    settings.API_TOKEN = "test-api-token"
+    settings.DB_NAME = f"{settings.DB_NAME}_test"
+    return settings
+
+
+# FastAPI fixtures
 @pytest_asyncio.fixture(scope="session")
-def app():
+async def app(test_settings):
     app = init_fastapi_app()
+    app.state.settings = test_settings
     return app
 
 
@@ -37,75 +44,79 @@ async def async_client(app: FastAPI):
         yield client
 
 
-@pytest.fixture(scope="session")
-def test_settings() -> Settings:
-    settings = get_settings()
-    settings.API_TOKEN = "test-api-token"
-    return settings
-
-
-@pytest.fixture
-def auth_headers(test_settings):
-    return {"X-API-Token": test_settings.API_TOKEN}
-
-
 @pytest_asyncio.fixture
-async def auth_async_client(app: FastAPI, auth_headers, test_settings):
-    app.state.settings = test_settings
-
+async def auth_async_client(app: FastAPI, test_settings):
+    headers = {"X-API-Token": test_settings.API_TOKEN}
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver", headers=auth_headers
+        transport=ASGITransport(app=app), base_url="http://testserver", headers=headers
     ) as client:
         yield client
 
 
-@pytest_asyncio.fixture
-async def db_engine():
-    async def get_postgres_connection():
-        return await asyncpg.connect(
-            host=settings.DB_HOST,
-            port=settings.DB_PORT,
-            user=settings.DB_USERNAME,
-            password=settings.DB_PASSWORD,
-            database="postgres",
-        )
+def get_db_url(settings: Settings, db_name: str = None) -> str:
+    return f"postgresql+asyncpg://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{db_name or settings.DB_NAME}"
 
-    test_db_name = f"{settings.DB_NAME}_test"
-    conn = await get_postgres_connection()
 
-    await conn.execute(f"DROP DATABASE IF EXISTS {test_db_name}")
-    await conn.execute(f"CREATE DATABASE {test_db_name}")
-    await conn.close()
+async def create_postgres_engine(settings: Settings):
+    return create_async_engine(get_db_url(settings, "postgres"), isolation_level="AUTOCOMMIT")
 
-    test_engine = create_async_engine(
-        f"postgresql+asyncpg://{settings.DB_USERNAME}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{test_db_name}"
-    )
 
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield test_engine
-
-    await test_engine.dispose()
-
-    conn = await get_postgres_connection()
-
+async def terminate_database_connections(conn, database: str):
+    """Terminate all connections to the database."""
     await conn.execute(
-        f"""
-        SELECT pg_terminate_backend(pg_stat_activity.pid)
-        FROM pg_stat_activity
-        WHERE pg_stat_activity.datname = '{test_db_name}'
-        AND pid <> pg_backend_pid()
-    """
+        text(
+            f"""
+            SELECT pg_terminate_backend(pg_stat_activity.pid)
+            FROM pg_stat_activity
+            WHERE pg_stat_activity.datname = '{database}'
+            AND pid <> pg_backend_pid()
+            """
+        )
     )
-    await conn.execute(f"DROP DATABASE IF EXISTS {test_db_name}")
-    await conn.close()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def db_engine(test_settings):
+    system_engine = None
+    test_engine = None
+
+    try:
+        system_engine = await create_postgres_engine(test_settings)
+        async with system_engine.connect() as conn:
+            await terminate_database_connections(conn, test_settings.DB_NAME)
+            await conn.execute(text(f"DROP DATABASE IF EXISTS {test_settings.DB_NAME}"))
+            await conn.execute(text(f"CREATE DATABASE {test_settings.DB_NAME}"))
+        await system_engine.dispose()
+
+        test_engine = create_async_engine(get_db_url(test_settings))
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        yield test_engine
+
+    finally:
+        if test_engine is not None:
+            await test_engine.dispose()
+
+        try:
+            system_engine = await create_postgres_engine(test_settings)
+            async with system_engine.connect() as conn:
+                await terminate_database_connections(conn, test_settings.DB_NAME)
+                await conn.execute(text(f"DROP DATABASE IF EXISTS {test_settings.DB_NAME}"))
+        finally:
+            if system_engine is not None:
+                await system_engine.dispose()
 
 
 @pytest_asyncio.fixture
 async def db_session(db_engine):
-    async_session = sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
+    factory = sessionmaker(
+        bind=db_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+    )
 
-    async with async_session() as session:
-        yield session
-        await session.rollback()
+    async with factory() as session:
+        try:
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
