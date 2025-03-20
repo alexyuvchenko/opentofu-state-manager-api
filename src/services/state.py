@@ -34,7 +34,7 @@ INITIAL_STATE = {
 def create_storage_repository() -> BaseStorageRepository:
     STORAGE_REPOSITORIES = {
         StorageType.MINIO: MinioStorageRepository,
-        # StorageType.AWS_S3: AWSS3StorageRepository, # TODO: Add AWS S3 storage repository
+        # StorageType.AWS_S3: AwsS3StorageRepository, # TODO: Add AWS S3 storage repository
     }
 
     settings = get_settings()
