@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from src.controllers.schema import LockRequestSchema
-from src.repos.schema import StateVersionSchema
+from src.repos.state.schema import StateVersionSchema
 from src.services.state import StateService
 
 

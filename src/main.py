@@ -18,7 +18,9 @@ setup_logging(settings)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Startup {settings.APP_NAME} v{settings.APP_VERSION}")
-    logger.debug(f"App configuration: title='{app.title}', docs_url='{app.docs_url}', environment='{settings.ENVIRONMENT.value}'")
+    logger.debug(
+        f"App configuration: title='{app.title}', docs_url='{app.docs_url}', environment='{settings.ENVIRONMENT.value}'"
+    )
     yield
     logger.info(f"Shutdown {settings.APP_NAME} v{settings.APP_VERSION}")
 

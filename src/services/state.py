@@ -2,13 +2,19 @@ import hashlib
 import json
 import logging
 import uuid
-from typing import List, Optional
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Type,
+)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.schema import LockRequestSchema
-from src.repos.schema import StateVersionSchema
+from src.core.settings import StorageType, get_settings
 from src.repos.state import StateRepository, StateVersionRepository
+from src.repos.state.schema import StateVersionSchema
 from src.repos.storage import BaseStorageRepository, MinioStorageRepository
 
 logger = logging.getLogger(__name__)
@@ -25,11 +31,26 @@ INITIAL_STATE = {
 }
 
 
+def create_storage_repository() -> BaseStorageRepository:
+    STORAGE_REPOSITORIES = {
+        StorageType.MINIO: MinioStorageRepository,
+        # StorageType.AWS_S3: AWSS3StorageRepository, # TODO: Add AWS S3 storage repository
+    }
+
+    settings = get_settings()
+    repository_class = STORAGE_REPOSITORIES.get(settings.STORAGE_TYPE, StorageType.MINIO)
+
+    if repository_class is None:
+        raise ValueError(f"Unsupported storage type: {settings.STORAGE_TYPE}")
+
+    return repository_class()
+
+
 class StateService:
     def __init__(self, session: AsyncSession):
         self.state_repo = StateRepository(session)
         self.state_version_repo = StateVersionRepository(session)
-        self.storage_repo: BaseStorageRepository = MinioStorageRepository()
+        self.storage_repo: BaseStorageRepository = create_storage_repository()
 
     def _get_hash(self, state_data: bytes) -> str:
         return hashlib.sha256(state_data).hexdigest()

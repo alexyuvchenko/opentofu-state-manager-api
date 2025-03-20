@@ -16,6 +16,11 @@ class LogFormat(StrEnum):
     TEXT = "text"
 
 
+class StorageType(str, Enum):
+    MINIO = "minio"
+    # AWS_S3 = "aws_s3" # TODO: Add AWS S3 storage
+
+
 class Settings(BaseSettings):
     APP_NAME: str = Field("OpenTofu State Manager API", alias="APP_NAME")
     APP_DESCRIPTION: str = Field("API for managing OpenTofu state", alias="APP_DESCRIPTION")
@@ -26,6 +31,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: LogFormat = Field(LogFormat.TEXT, alias="LOG_FORMAT")
     DB_ECHO: bool = Field(False, alias="DB_ECHO")
     API_TOKEN: str = Field("API_TOKEN=managing-opentofu-state-secure-api-token", alias="API_TOKEN")
+    STORAGE_TYPE: StorageType = Field(StorageType.MINIO, alias="STORAGE_TYPE")
 
     DB_USERNAME: str = Field("postgres", alias="DB_USERNAME")
     DB_PASSWORD: str = Field("opentofu", alias="DB_PASSWORD")
