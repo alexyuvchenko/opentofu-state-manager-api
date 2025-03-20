@@ -11,15 +11,16 @@ For local development:
 - Python 3.13+
 - Poetry (Python package manager)
 
-## Running the Application
+## Quick Start with Docker Compose
 
 1. Clone the repository
 2. Update the `.env` file with your secure API token
-3. Run the application:
-
+3. Start all services:
 ```bash
 make start
 ```
+
+The API will be available at `http://localhost:8080`
 
 ## Authentication
 
@@ -31,7 +32,7 @@ X-API-Token: your-secure-api-token-here
 
 ## Available Make Commands
 
-#### Docker Commands
+### Docker Commands
 ```bash
 make start          # Start all services
 make build          # Build services
@@ -42,42 +43,56 @@ make bash           # Open a shell in the API container
 make clean-docker   # Remove all containers, images, and volumes
 ```
 
-#### Code & Database
+### Code Formatting
 ```bash
-make format         # Run all formatters
+make format         # Run all formatters (isort and black)
+make black          # Format code with Black
+make isort          # Sort imports with isort
 make check          # Run all formatters in check mode
+make check-black    # Check code formatting with Black
+make check-isort    # Check import sorting with isort
+```
+
+### Database Migrations
+```bash
 make migrate        # Run all pending migrations
 make migrate-up     # Run next pending migration
 make migrate-down   # Rollback last migration
 make migrate-revision message="Description"  # Create new migration revision
 ```
 
-#### Local Development
+### Local Development
 ```bash
-make setup-local    # Setup local development environment
-make local-server   # Run development server locally
-make local-test     # Run tests locally
+make local-setup    # Setup local development environment
+make local-start    # Run development server locally with required services
+make local-test     # Run tests locally with required services
 make local-check    # Run code quality checks locally
 make local-format   # Format code locally
 make local-clean    # Clean all useless data
-make help           # Display available commands with descriptions
+make help          # Display available commands with descriptions
 ```
 
 ## Local Development Setup
 
+1. Clone the repository
+2. Set up the local environment:
 ```bash
-# Set up environment
-make setup-local
-
-# Start database
-docker-compose -f docker/docker-compose.yaml up -d
-
-# Run server
-source .venv/bin/activate
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+make local-setup
+```
+3. Update the `.env` file with your secure API token
+4. Start the development server with required services (PostgreSQL and MinIO):
+```bash
+make local-start
 ```
 
 The API will be available at `http://localhost:8000`
+
+## Running Tests
+
+To run tests locally (automatically starts required services):
+```bash
+make local-test
+```
 
 ## API Documentation
 

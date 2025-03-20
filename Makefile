@@ -12,6 +12,8 @@
 
 PROJECT_NAME=opentofu-state-manager-api
 PROJECT_CONTAINER_NAME=api
+POSTGRES_CONTAINER_NAME=postgres
+MINIO_CONTAINER_NAME=minio
 DOCKER_COMPOSE=docker/docker-compose.yaml
 
 # Default target
@@ -39,9 +41,6 @@ stop: ## Stop services
 run-app: ## Run api service
 	@printf "\n=> Run api service...\n\n"
 	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) up -d $(PROJECT_CONTAINER_NAME)
-
-docker-run: ## Starts FastAPI service in docker container
-	@docker run -p 8000:8000 -it $(PROJECT_NAME) gunicorn src.main:app --worker-class uvicorn.workers.UvicornWorker --reload --workers 1 -b 0.0.0.0:8000
 
 bash:
 	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) sh
@@ -92,17 +91,19 @@ migrate-revision: ## Create new migration revision
 	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) exec $(PROJECT_CONTAINER_NAME) alembic revision --autogenerate -m "$(message)"
 
 # Local development commands
-setup-local: ## Setup local development environment
+local-setup: ## Setup local development environment
 	@printf "\n=> Setting up local development environment...\n\n"
 	@chmod +x scripts/setup_local.sh
 	@./scripts/setup_local.sh
 
-local-server: ## Run development server locally
+local-start: ## Start development server locally
 	@printf "\n=> Starting development server...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) up -d $(POSTGRES_CONTAINER_NAME) $(MINIO_CONTAINER_NAME)
 	@source .venv/bin/activate && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 local-test: ## Run tests locally
 	@printf "\n=> Running tests locally...\n\n"
+	@docker compose -f $(DOCKER_COMPOSE) -p $(PROJECT_NAME) up -d $(POSTGRES_CONTAINER_NAME) $(MINIO_CONTAINER_NAME)
 	@source .venv/bin/activate && pytest
 
 local-check: ## Run code quality checks locally
