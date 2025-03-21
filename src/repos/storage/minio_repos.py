@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 import aiobotocore.session
+from aiobotocore.client import AioBaseClient
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, status
 
@@ -26,7 +27,7 @@ class MinioStorageRepository(BaseStorageRepository):
             "aws_secret_access_key": settings.MINIO_SECRET_KEY,
         }
 
-    async def _get_client(self):
+    async def _get_client(self) -> AioBaseClient:
         return self.session.create_client("s3", **self.client_kwargs)
 
     async def get(self, path: str) -> Optional[bytes]:

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -45,4 +46,4 @@ class StateVersionResponseSchema(BaseModel):
 
 
 class StateVersionListResponseSchema(BaseModel):
-    data: list[StateVersionResponseSchema]
+    data: List[StateVersionResponseSchema]

@@ -20,6 +20,7 @@ from src.controllers.schema import (
 )
 from src.core.auth import get_api_token
 from src.db.session import get_session
+from src.repos.storage import BaseStorageRepository, create_storage_repository
 from src.services.state import StateService
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["opentofu"], dependencies=[Depends(get_api_token)])
 
 
-async def get_state_service(session: AsyncSession = Depends(get_session)) -> StateService:
-    return StateService(session)
+def get_storage_repository() -> BaseStorageRepository:
+    return create_storage_repository()
+
+
+async def get_state_service(
+    session: AsyncSession = Depends(get_session),
+    storage_repo: BaseStorageRepository = Depends(get_storage_repository),
+) -> StateService:
+    return StateService(session, storage_repo)
 
 
 @router.get("/{state_identifier}", status_code=status.HTTP_200_OK)

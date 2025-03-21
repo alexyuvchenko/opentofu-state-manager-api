@@ -23,34 +23,25 @@ def mock_state_version_repo():
     mock_repo = AsyncMock()
     mock_repo.get_versions_by_state_id.return_value = []
     mock_repo.create_version.return_value = None
-
     return mock_repo
 
 
 @pytest.fixture
-def mock_storage_repo():
-    mock_repo = AsyncMock()
-    mock_repo.get.return_value = json.dumps({"version": 4, "terraform_version": "1.9.0"}).encode()
-    mock_repo.put.return_value = None
-    mock_repo.ensure_bucket_exists.return_value = None
-
-    return mock_repo
-
-
-@pytest.fixture
-def state_service(mock_state_repo, mock_state_version_repo, mock_storage_repo):
-    service = StateService(AsyncMock())
+def state_service(mock_state_repo, mock_state_version_repo, mock_storage_repository):
+    """Create a state service with mock repositories for testing."""
+    service = StateService(AsyncMock(), mock_storage_repository)
     service.state_repo = mock_state_repo
     service.state_version_repo = mock_state_version_repo
-    service.storage_repo = mock_storage_repo
-
     return service
 
 
 @pytest.mark.asyncio
 async def test_get_state(
-    state_service, mock_state_repo, mock_state_version_repo, mock_storage_repo
+    state_service, mock_state_repo, mock_state_version_repo, mock_storage_repository
 ):
+    test_data = json.dumps({"version": 4, "terraform_version": "1.9.0"})
+    mock_storage_repository.storage["states/test-state/test-hash"] = test_data.encode()
+
     mock_state = MagicMock()
     mock_state.id = 1
     mock_state_repo.get_by_name.return_value = mock_state
@@ -68,11 +59,12 @@ async def test_get_state(
     state_data = await state_service.get_state("test-state")
 
     assert json.loads(state_data) == {"version": 4, "terraform_version": "1.9.0"}
-    mock_storage_repo.get.assert_called_once_with("states/test-state/test-hash")
 
 
 @pytest.mark.asyncio
-async def test_save_state(state_service, mock_state_repo, mock_state_version_repo):
+async def test_save_state(
+    state_service, mock_state_repo, mock_state_version_repo, mock_storage_repository
+):
     mock_state = MagicMock()
     mock_state.id = 1
     mock_state_repo.save_state.return_value = mock_state

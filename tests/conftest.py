@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -11,6 +12,34 @@ from sqlalchemy.orm import sessionmaker
 from src.core.settings import Settings, get_settings
 from src.db.tables import Base
 from src.main import init_fastapi_app
+from src.repos.storage import BaseStorageRepository
+
+
+class MockStorageRepository(BaseStorageRepository):
+
+    def __init__(self):
+        self.storage = {}
+        self.ensure_bucket_exists_called = False
+
+    async def get(self, path: str):
+        return self.storage.get(path)
+
+    async def put(self, path: str, data: bytes):
+        self.storage[path] = data
+
+    async def delete(self, path: str):
+        if path in self.storage:
+            del self.storage[path]
+
+    async def ensure_bucket_exists(self):
+        self.ensure_bucket_exists_called = True
+
+
+@pytest.fixture(scope="function", autouse=True)
+def mock_storage_repository():
+    mock_repo = MockStorageRepository()
+    with patch("src.repos.storage.create_storage_repository", return_value=mock_repo):
+        yield mock_repo
 
 
 @pytest.fixture(scope="session", autouse=True)
